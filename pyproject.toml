@@ -1,23 +1,175 @@
 [build-system]
-requires = ["setuptools >= 64.0"]
+requires = ["setuptools >= 64.0", "setuptools_scm>=8.1"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "codebase"
+name = "saffron"
 version = "1.0.0"
-dependencies = [
-    "numpy",
-    "pandas"
-]
-requires-python = ">=3.8"
+description = "Automated mitochondria and microglia spatial analysis for brain imaging data"
 readme = "README.md"
-classifiers = ["Programming Language :: Python"]
-description = "Automated tracking and processing of MPT videos"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Your Name", email = "your.email@example.com"},
+]
+keywords = ["neuroscience", "image-analysis", "mitochondria", "microglia", "brain-imaging"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+]
 
-## Code below is needed since codebase is under src directory
+dependencies = [
+    "numpy>=1.23",
+    "pandas>=2.2.1",
+    "matplotlib>=3.5.0",
+    "scipy>=1.8",
+    "scikit-image>=0.19.0",
+    "scikit-learn>=1.1.0",
+    "opencv-python>=4.5.0",
+    "tifffile>=2021.7.2",
+    "nd2>=0.5.0",
+    "pathlib2>=2.3.0; python_version<'3.4'",
+    "pyyaml>=6.0",
+    "vampire>=0.1.0",  # Add version constraint if known
+]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8.2.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.10.0",
+]
+dev = [
+    "black>=22.0.0",
+    "isort>=5.10.0",
+    "flake8>=4.0.0",
+    "mypy>=0.950",
+]
+torch = [
+    "torch>=1.12.0",
+    "torchvision>=0.13.0",
+]
+all = [
+    "saffron[test,dev,torch]"
+]
+
+[project.urls]
+Homepage = "https://github.com/nlsschim/codebase"
+Repository = "https://github.com/nlsschim/codebase"
+Issues = "https://github.com/nlsschim/codebase/issues"
+
+[project.scripts]
+saffron-analyze = "saffron.cli:main"  # If you add a CLI interface later
+
+# Setuptools configuration
 [tool.setuptools]
-packages = ["codebase"]
+package-dir = {"" = "src"}
+include-package-data = true
 
-[tool.setuptools.package-dir]
-codebase = "src/codebase"
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["saffron*"]
+exclude = ["tests*"]
+
+[tool.setuptools.package-data]
+saffron = ["*.yaml", "*.json", "data/*.csv"]
+
+# Testing configuration
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov=saffron",
+    "--cov-report=term-missing",
+    "--cov-report=html",
+    "--cov-fail-under=80",
+]
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+]
+
+# Black code formatting
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+# isort import sorting
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+line_length = 88
+known_first_party = ["saffron"]
+
+# MyPy type checking
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+warn_unreachable = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "vampire.*",
+    "nd2.*",
+    "cv2.*",
+    "skimage.*",
+    "tifffile.*",
+]
+ignore_missing_imports = true
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["src/saffron"]
+omit = [
+    "*/tests/*",
+    "*/test_*.py",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]
