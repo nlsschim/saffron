@@ -9,6 +9,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class BackboneEncoder(ABC):
     """Abstract base class for different backbone encoders."""
     
@@ -23,6 +24,7 @@ class BackboneEncoder(ABC):
     @abstractmethod
     def get_output_dim(self) -> int:
         pass
+
 
 class ResNetEncoder(BackboneEncoder):
     """ResNet backbone encoder."""
@@ -59,6 +61,7 @@ class ResNetEncoder(BackboneEncoder):
     
     def get_output_dim(self) -> int:
         return self.output_dim
+
 
 class EfficientNetEncoder(BackboneEncoder):
     """EfficientNet backbone encoder."""
@@ -105,6 +108,7 @@ class EfficientNetEncoder(BackboneEncoder):
     def get_output_dim(self) -> int:
         return self.output_dim
 
+
 class ViTEncoder(BackboneEncoder):
     """Vision Transformer backbone encoder."""
     
@@ -148,6 +152,7 @@ class ViTEncoder(BackboneEncoder):
     
     def get_output_dim(self) -> int:
         return self.output_dim
+
 
 class SimpleConvEncoder(BackboneEncoder):
     """Simple convolutional encoder for testing/baseline."""
@@ -200,6 +205,7 @@ class SimpleConvEncoder(BackboneEncoder):
     def get_output_dim(self) -> int:
         return self.output_dim
 
+
 class ProjectionHead(nn.Module):
     """Projection head for contrastive learning."""
     
@@ -217,6 +223,7 @@ class ProjectionHead(nn.Module):
     
     def forward(self, x: Tensor) -> Tensor:
         return self.projection(x)
+
 
 class ContrastiveModel(nn.Module):
     """
@@ -251,7 +258,7 @@ class ContrastiveModel(nn.Module):
         logger.info(f"Initialized ContrastiveModel with {backbone_type} backbone")
         logger.info(f"Encoder output dim: {self.encoder.get_output_dim()}")
         logger.info(f"Projection dim: {projection_dim}")
-    
+
     def _create_backbone(self, backbone_type: str, input_channels: int, 
                         pretrained: bool, **kwargs) -> BackboneEncoder:
         """Factory method to create backbone encoders."""
@@ -266,7 +273,7 @@ class ContrastiveModel(nn.Module):
             return SimpleConvEncoder(input_channels, pretrained, **kwargs)
         else:
             raise ValueError(f"Unsupported backbone type: {backbone_type}")
-    
+
     def encode(self, x: Tensor) -> Tensor:
         """Encode input through backbone only (no projection)."""
         return self.encoder.forward(x)
@@ -328,6 +335,7 @@ class ContrastiveModel(nn.Module):
             param.requires_grad = True
         logger.info("Backbone parameters unfrozen")
 
+
 def create_model(backbone_type: str = "resnet18", **kwargs) -> ContrastiveModel:
     """
     Convenience function to create a ContrastiveModel with specified backbone.
@@ -341,6 +349,7 @@ def create_model(backbone_type: str = "resnet18", **kwargs) -> ContrastiveModel:
         ContrastiveModel instance
     """
     return ContrastiveModel(backbone_type=backbone_type, **kwargs)
+
 
 if __name__ == "__main__":
     # Example usage and testing
@@ -357,7 +366,7 @@ if __name__ == "__main__":
             model = create_model(backbone_type=backbone, input_channels=1)
             print(f"\n{backbone} model created successfully!")
             print(f"Parameters: {model.get_num_parameters()}")
-            
+
             # Test forward pass
             dummy_input = torch.randn(2, 1, 64, 64)  # Batch of 2, single channel, 64x64
             with torch.no_grad():
@@ -366,8 +375,8 @@ if __name__ == "__main__":
                 print(f"Input shape: {dummy_input.shape}")
                 print(f"Feature shape: {features.shape}")
                 print(f"Projection shape: {projections.shape}")
-                
+
         except Exception as e:
             print(f"Error with {backbone}: {e}")
-    
+
     print("\nModel testing completed!")

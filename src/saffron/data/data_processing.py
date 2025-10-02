@@ -9,7 +9,7 @@ import cv2
 from sklearn.model_selection import train_test_split as sklearn_split
 
 # Assuming the ImageData class from the previous module
-from data_io import ImageData
+from saffron.io.data_io import ImageData
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +31,7 @@ class DataSplit:
             'total': len(self)
         }
 
+
 @dataclass
 class PatchPair:
     """Container for patch pairs used in contrastive learning."""
@@ -40,6 +41,7 @@ class PatchPair:
     original_position: Tuple[int, int]  # (row, col) of patch in original image
     patch_size: int
     source_image_path: str
+
 
 def extract_metadata_from_path(file_path: str) -> Dict[str, str]:
     """
@@ -67,17 +69,18 @@ def extract_metadata_from_path(file_path: str) -> Dict[str, str]:
             metadata['condition'] = part
         elif part.startswith('rep'):
             metadata['replicate'] = part
-    
+
     return metadata
 
-def train_test_split(images: List[ImageData], 
-                    test_size: float = 0.2,
-                    val_size: float = 0.1,
-                    split_criteria: str = "random",
-                    random_state: int = 42) -> DataSplit:
+
+def train_test_split(images: List[ImageData],
+                     test_size: float = 0.2,
+                     val_size: float = 0.1,
+                     split_criteria: str = "random",
+                     random_state: int = 42) -> DataSplit:
     """
     Method to split images into training, testing, and validation based on specified criteria.
-    
+
     Args:
         images: List of ImageData objects
         test_size: Proportion for test set
@@ -106,6 +109,7 @@ def train_test_split(images: List[ImageData],
     else:
         raise ValueError(f"Unknown split criteria: {split_criteria}")
 
+
 def _random_split(images: List[ImageData], test_size: float, val_size: float, 
                  random_state: int) -> DataSplit:
     """Random split implementation."""
@@ -118,6 +122,7 @@ def _random_split(images: List[ImageData], test_size: float, val_size: float,
     
     logger.info(f"Random split: Train={len(train)}, Val={len(val)}, Test={len(test)}")
     return DataSplit(train=train, test=test, val=val)
+
 
 def _split_by_slice(images: List[ImageData], test_size: float, val_size: float,
                    random_state: int) -> DataSplit:
@@ -151,6 +156,7 @@ def _split_by_slice(images: List[ImageData], test_size: float, val_size: float,
     logger.info(f"Test slices: {test_slices}")
     
     return DataSplit(train=train, test=test, val=val)
+
 
 def _split_by_animal(images: List[ImageData], test_size: float, val_size: float,
                     random_state: int) -> DataSplit:
@@ -190,6 +196,7 @@ def _split_by_animal(images: List[ImageData], test_size: float, val_size: float,
     
     return DataSplit(train=train, test=test, val=val)
 
+
 def _check_condition_balance(animal_groups: Dict[str, List[ImageData]]) -> Dict[str, int]:
     """Check condition distribution across animals."""
     condition_counts = defaultdict(int)
@@ -199,6 +206,7 @@ def _check_condition_balance(animal_groups: Dict[str, List[ImageData]]) -> Dict[
             condition = metadata.get('condition', 'unknown')
             condition_counts[condition] += 1
     return dict(condition_counts)
+
 
 def create_masked_image(image: np.ndarray, patch_position: Tuple[int, int], 
                        patch_size: int, mask_value: float = 0.0) -> np.ndarray:
@@ -223,6 +231,7 @@ def create_masked_image(image: np.ndarray, patch_position: Tuple[int, int],
     
     masked[row:end_row, col:end_col] = mask_value
     return masked
+
 
 def extract_patch(image: np.ndarray, patch_position: Tuple[int, int], 
                  patch_size: int) -> np.ndarray:
@@ -251,17 +260,18 @@ def extract_patch(image: np.ndarray, patch_position: Tuple[int, int],
     
     return patch
 
-def generate_random_patch_positions(image_shape: Tuple[int, ...], patch_size: int, 
-                                  num_positions: int, min_distance: int = 0) -> List[Tuple[int, int]]:
+
+def generate_random_patch_positions(image_shape: Tuple[int, ...], patch_size: int,
+                                    num_positions: int, min_distance: int = 0) -> List[Tuple[int, int]]:
     """
     Generate random patch positions ensuring they fit within image bounds.
-    
+
     Args:
         image_shape: Shape of the image
         patch_size: Size of patches
         num_positions: Number of positions to generate
         min_distance: Minimum distance between patches
-        
+
     Returns:
         List of (row, col) positions
     """
@@ -297,8 +307,9 @@ def generate_random_patch_positions(image_shape: Tuple[int, ...], patch_size: in
     
     return positions
 
+
 def create_positive_pairs(images: List[ImageData], patch_size: int = 64,
-                         patches_per_image: int = 5) -> List[PatchPair]:
+                          patches_per_image: int = 5) -> List[PatchPair]:
     """
     Create positive pairs for contrastive learning.
     Each positive pair consists of a masked image and its correct patch.
@@ -326,7 +337,8 @@ def create_positive_pairs(images: List[ImageData], patch_size: int = 64,
         
         try:
             positions = generate_random_patch_positions(
-                image.shape, patch_size, patches_per_image, min_distance=patch_size//2
+                image.shape, patch_size, patches_per_image,
+                min_distance=patch_size//2
             )
             
             for pos in positions:
@@ -355,9 +367,10 @@ def create_positive_pairs(images: List[ImageData], patch_size: int = 64,
     logger.info(f"Created {len(positive_pairs)} positive pairs")
     return positive_pairs
 
+
 def create_negative_pairs(positive_pairs: List[PatchPair], 
-                         all_images: List[ImageData],
-                         negatives_per_positive: int = 3) -> List[PatchPair]:
+                          all_images: List[ImageData],
+                          negatives_per_positive: int = 3) -> List[PatchPair]:
     """
     Create negative pairs for contrastive learning.
     Each negative pair consists of a masked image and an incorrect patch.
@@ -422,29 +435,30 @@ def create_negative_pairs(positive_pairs: List[PatchPair],
     logger.info(f"Created {len(negative_pairs)} negative pairs")
     return negative_pairs
 
+
 if __name__ == "__main__":
     # Example usage
     print("Data Preprocessing module loaded successfully!")
-    
+ 
     # Example of how to use the functions:
     # 1. Load images using the data_io module
     # 2. Split them using train_test_split()
     # 3. Create positive and negative pairs for contrastive learning
-    
+
     """
     # Example workflow:
     from data_io import load_images_from_directory
-    
+
     # Load images
     images = load_images_from_directory("path/to/microglia/images")
-    
+
     # Split into train/test/val
     data_splits = train_test_split(images, split_criteria="by_animal")
-    
+
     # Create pairs for contrastive learning
     positive_pairs = create_positive_pairs(data_splits.train)
     negative_pairs = create_negative_pairs(positive_pairs, data_splits.train)
-    
+
     print(f"Training data: {len(data_splits.train)} images")
     print(f"Positive pairs: {len(positive_pairs)}")
     print(f"Negative pairs: {len(negative_pairs)}")
