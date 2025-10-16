@@ -5,7 +5,6 @@ import random
 from pathlib import Path
 import logging
 from collections import defaultdict
-import cv2
 from sklearn.model_selection import train_test_split as sklearn_split
 
 # Assuming the ImageData class from the previous module
@@ -13,16 +12,17 @@ from saffron.io.data_io import ImageData
 
 logger = logging.getLogger(__name__)
 
+
 @dataclass
 class DataSplit:
     """Container for train/test/validation splits."""
     train: List[ImageData]
     test: List[ImageData]
     val: List[ImageData]
-    
+
     def __len__(self):
         return len(self.train) + len(self.test) + len(self.val)
-    
+
     def get_split_info(self) -> Dict[str, int]:
         return {
             'train': len(self.train),
@@ -326,14 +326,7 @@ def create_positive_pairs(images: List[ImageData], patch_size: int = 64,
     
     for img_data in images:
         image = img_data.data
-        
-        # Handle different image dimensions
-        if len(image.shape) == 3:
-            # If multichannel, use first channel or convert to grayscale
-            if image.shape[2] == 3:  # RGB
-                image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-            else:
-                image = image[:, :, 0]
+        #image = image[:, :, 0]
         
         try:
             positions = generate_random_patch_positions(
@@ -389,13 +382,7 @@ def create_negative_pairs(positive_pairs: List[PatchPair],
     all_patches = []
     for img_data in all_images:
         image = img_data.data
-        
-        # Handle different image dimensions
-        if len(image.shape) == 3:
-            if image.shape[2] == 3:
-                image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-            else:
-                image = image[:, :, 0]
+        #image = image[:, :, 0]
         
         # Sample random patches from this image
         try:

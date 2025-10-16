@@ -4,8 +4,11 @@ Adapted dataset and dataloader creation using existing functions from:
 - saffron.io.data_processing (train_test_split, create_positive_pairs, create_negative_pairs, PatchPair)
 """
 
+import os
 import torch
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, Subset, random_split
+from torchvision.io import read_image
+from torchvision.transforms import v2
 import numpy as np
 from typing import List, Tuple, Optional
 from pathlib import Path
@@ -20,8 +23,127 @@ from saffron.data.data_processing import (
     PatchPair,
     DataSplit
 )
+from saffron.io.data_io import load_tif, load_npy
+
 
 logger = logging.getLogger(__name__)
+
+
+class MicrogliaDataset(Dataset):
+    """
+    Dataset optimized for saffron's TIFF and NPY files.
+    """
+
+    def __init__(self, path=".", train=True, transform=None,
+                 labels=["control", "treatment"]):
+        self.path = path
+        self.train = train
+        self.transform = transform
+        self.label_map = labels
+
+        folder = "Training" if self.train else "Testing"
+        self.data_path = os.path.join(self.path, folder)
+
+        self.file = []
+        self.label_txt = []
+        self.label_idx = []
+
+        # Support both TIFF and NPY
+        valid_extensions = {'.tif', '.tiff', '.npy'}
+
+        for root, dirs, files in os.walk(self.data_path):
+            if len(files) > 0:
+                image_files = [f for f in files 
+                             if Path(f).suffix.lower() in valid_extensions]
+                
+                if len(image_files) == 0:
+                    continue
+                
+                self.file += [os.path.join(root, file) for file in image_files]
+                label_txt = os.path.basename(root)
+                
+                if label_txt not in self.label_map:
+                    continue
+                
+                label_idx = self.label_map.index(label_txt)
+                self.label_txt += [label_txt] * len(image_files)
+                self.label_idx += [label_idx] * len(image_files)
+
+        assert len(self.file) == len(self.label_idx), \
+            "Image and label count mismatch!!!"
+        
+        self.length = len(self.label_idx)
+        
+        if self.length == 0:
+            raise ValueError(
+                f"No images found in {self.data_path}\n"
+                f"Expected label directories: {self.label_map}"
+            )
+
+    def __len__(self):
+        return self.length
+
+    def __getitem__(self, idx):
+        """Load image using saffron's loaders."""
+        file_path = Path(self.file[idx])
+        
+        try:
+            # Use saffron's existing loaders
+            if file_path.suffix.lower() in ['.tif', '.tiff']:
+                img_data = load_tif(file_path)
+            elif file_path.suffix.lower() == '.npy':
+                img_data = load_npy(file_path)
+            else:
+                raise ValueError(f"Unsupported file type: {file_path.suffix}")
+            
+            # Convert numpy to tensor
+            image = torch.from_numpy(img_data.data).float()
+            
+            # Handle different image shapes
+            if len(image.shape) == 2:  # Grayscale [H, W]
+                image = image.unsqueeze(0)  # Add channel dimension -> [1, H, W]
+            elif len(image.shape) == 3:
+                # If [H, W, C], convert to [C, H, W]
+                if image.shape[-1] in [1, 3, 4]:  # Last dim is channels
+                    image = image.permute(2, 0, 1)
+                # If already [C, H, W], leave as is
+            
+            # Normalize if needed
+            if image.max() > 1.0:
+                image = image / 255.0
+            
+            # Apply transforms
+            if self.transform:
+                image = self.transform(image)
+            
+            label = self.label_idx[idx]
+            return image, label
+            
+        except Exception as e:
+            print(f"Error loading {file_path}: {e}")
+            raise
+
+
+def generate_dataloaders(dataset, train=True, transforms=None, num_workers=4):
+
+    generator = torch.Generator().manual_seed(42)
+    data_train, data_val = random_split(dataset, [0.7, 0.3], generator=generator)
+
+    data_train = DataLoader(
+        data_train,
+        batch_size=32,
+        shuffle=True,
+        num_workers=min(num_workers, os.cpu_count())
+    )
+
+    data_val = DataLoader(
+        data_val,
+        batch_size=32,
+        shuffle=True,
+        num_workers=min(num_workers, os.cpu_count())
+    )
+
+    return data_train, data_val
 
 
 class PatchPairDataset(Dataset):
@@ -55,10 +177,10 @@ class PatchPairDataset(Dataset):
         logger.info(f"Dataset created with {len(positive_pairs)} positive pairs")
         logger.info(f"Dataset created with {len(negative_pairs)} negative pairs")
         logger.info(f"Ratio: {self.negatives_per_positive} negatives per positive")
-    
+
     def __len__(self):
         return len(self.positive_pairs)
-    
+
     def __getitem__(self, idx: int):
         """
         Get a training sample consisting of:
@@ -85,6 +207,8 @@ class PatchPairDataset(Dataset):
         # Convert to tensors
         masked_image = torch.from_numpy(pos_pair.masked_image).unsqueeze(0).float()
         positive_patch = torch.from_numpy(pos_pair.candidate_patch).unsqueeze(0).float()
+        #masked_image = torch.as_tensor((pos_pair.masked_image)).unsqueeze(0).float()
+        #positive_patch = torch.as_tensor((pos_pair.candidate_patch)).unsqueeze(0).float()
         
         # Stack negative patches
         negative_patches = torch.stack([

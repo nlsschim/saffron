@@ -35,7 +35,7 @@ class ImageData:
         )
 
 
-def validate_im(image: np.ndarray, file_path: str) -> bool:
+def validate_im(image: np.ndarray, file_path: str, verbose = False) -> bool:
     """
     Function to validate the input image will work for the given workflow.
     Checks the shape of the image, ensures it isn't empty, etc.
@@ -91,9 +91,10 @@ def validate_im(image: np.ndarray, file_path: str) -> bool:
         logger.error(f"Image contains infinite values: {file_path}")
         return False
 
-    logger.info(
-        f"Image validation passed: {file_path} - Shape: {image.shape}, Dtype: {image.dtype}"
-        )
+    if verbose:
+        logger.info(
+            f"Image validation passed: {file_path} - Shape: {image.shape}, Dtype: {image.dtype}"
+            )
     return True
 
 
@@ -147,7 +148,7 @@ def load_tif(file_path: Union[str, Path]) -> ImageData:
         except Exception as e:
             logger.warning(f"Could not extract metadata from {file_path}: {e}")
 
-        logger.info(f"Successfully loaded TIF: {file_path}")
+        #logger.info(f"Successfully loaded TIF: {file_path}")
         return ImageData(
             data=image,
             file_path=str(file_path),

@@ -10,6 +10,53 @@ import logging
 logger = logging.getLogger(__name__)
 
 
+class MicrogliaCNN(torch.nn.Module):
+    """
+    A simple neural network architecture for microglia classification.
+    Handles 512x512 grayscale images.
+    """
+
+    def __init__(self, input_size=512, num_classes=6):
+        super(MicrogliaCNN, self).__init__()
+        
+        self.cnn1 = nn.Sequential(
+            nn.Conv2d(in_channels=1, out_channels=8, kernel_size=12, stride=2, padding=2),
+            nn.ReLU(),
+            nn.AvgPool2d(kernel_size=12, stride=2, padding=2)
+        )
+        
+        self.cnn2 = nn.Sequential(
+            nn.Conv2d(in_channels=8, out_channels=128, kernel_size=12, stride=2, padding=2),
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=12, stride=2, padding=2)
+        )
+        
+        # Calculate flattened size dynamically
+        self.flattened_size = self._get_flattened_size(input_size)
+        
+        self.fc1 = nn.Sequential(
+            nn.Linear(self.flattened_size, 500),
+            nn.ReLU(),
+            nn.Linear(500, num_classes)
+        )
+    
+    def _get_flattened_size(self, input_size):
+        """Calculate the size after convolutions and pooling."""
+        # Simulate forward pass with dummy input
+        dummy_input = torch.zeros(1, 1, input_size, input_size)
+        x = self.cnn1(dummy_input)
+        x = self.cnn2(x)
+        return x.view(1, -1).size(1)
+
+    def forward(self, x):
+        out = self.cnn1(x)
+        out = self.cnn2(out)
+        out = out.view(out.size(0), -1)  # Flatten
+        out = self.fc1(out)
+
+        return out
+
+
 class BackboneEncoder(ABC):
     """Abstract base class for different backbone encoders."""
     
