@@ -24,33 +24,6 @@ def device_check(req_dev):
 		req_dev: [None, "cpu", "cuda", "mps"]
 	"""
 	device = None
-<<<<<<< HEAD
-
-	if req_dev:
-		# Attempt manual device selection
-		if req_dev == "mps" and torch.backends.mps.is_available():
-			device = torch.device("mps")  # Apple Silicon GPU
-		elif req_dev == "cuda" and torch.cuda.is_available():
-			device = torch.device("cuda")  # NVIDIA GPU
-		else:
-			device = torch.device("cpu")  # Defaults to CPU
-	else:
-		# Automatic device detection
-		if torch.backends.mps.is_available():
-			# Check and use Apple Silicon GPU
-			# https://pytorch.org/docs/stable/notes/mps.html
-			device = torch.device("mps")
-		elif torch.cuda.is_available():
-			# The provided code for CUDA
-			device = torch.device("cuda")
-		else:
-			# Default to CPU if no accelerator available
-			device = torch.device("cpu")
-
-	return device
-
-=======
->>>>>>> bec4f805bab7f6907cccc3baa1b76572170008b9
 
 	if req_dev:
 		# Attempt manual device selection
@@ -95,11 +68,8 @@ def make_dataloaders(batch_size=32):
                                          transform=transforms)
     print(microglia_dataset.length)
 
-<<<<<<< HEAD
-    data_train, data_val = generate_dataloaders(microglia_dataset, num_workers=1)
-=======
     data_train, data_val = generate_dataloaders(microglia_dataset, num_workers=2, batch_size=batch_size)
->>>>>>> bec4f805bab7f6907cccc3baa1b76572170008b9
+
     return data_train, data_val
 
 
@@ -269,13 +239,8 @@ if __name__ == "__main__":
     val_accuracy, val_loss, train_loss = train(
         model=model,
         weights=None,
-<<<<<<< HEAD
-        epochs=20,
-        device=torch.device("cuda"),
-=======
         epochs=args.epochs,
         device=device,
->>>>>>> bec4f805bab7f6907cccc3baa1b76572170008b9
         data=[data_train, data_val],
         loss_func=loss_func,
         optimizer=optimizer
