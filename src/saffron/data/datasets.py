@@ -124,21 +124,21 @@ class MicrogliaDataset(Dataset):
             raise
 
 
-def generate_dataloaders(dataset, train=True, transforms=None, num_workers=4):
+def generate_dataloaders(dataset, train=True, transforms=None, num_workers=4, batch_size=32):
 
     generator = torch.Generator().manual_seed(42)
     data_train, data_val = random_split(dataset, [0.7, 0.3], generator=generator)
 
     data_train = DataLoader(
         data_train,
-        batch_size=32,
+        batch_size=batch_size,
         shuffle=True,
         num_workers=min(num_workers, os.cpu_count())
     )
 
     data_val = DataLoader(
         data_val,
-        batch_size=32,
+        batch_size=batch_size,
         shuffle=True,
         num_workers=min(num_workers, os.cpu_count())
     )
