@@ -1,3 +1,6 @@
+import os
+import argparse
+import logging
 import torch
 import sys
 from pathlib import Path
@@ -21,6 +24,33 @@ def device_check(req_dev):
 		req_dev: [None, "cpu", "cuda", "mps"]
 	"""
 	device = None
+<<<<<<< HEAD
+
+	if req_dev:
+		# Attempt manual device selection
+		if req_dev == "mps" and torch.backends.mps.is_available():
+			device = torch.device("mps")  # Apple Silicon GPU
+		elif req_dev == "cuda" and torch.cuda.is_available():
+			device = torch.device("cuda")  # NVIDIA GPU
+		else:
+			device = torch.device("cpu")  # Defaults to CPU
+	else:
+		# Automatic device detection
+		if torch.backends.mps.is_available():
+			# Check and use Apple Silicon GPU
+			# https://pytorch.org/docs/stable/notes/mps.html
+			device = torch.device("mps")
+		elif torch.cuda.is_available():
+			# The provided code for CUDA
+			device = torch.device("cuda")
+		else:
+			# Default to CPU if no accelerator available
+			device = torch.device("cpu")
+
+	return device
+
+=======
+>>>>>>> bec4f805bab7f6907cccc3baa1b76572170008b9
 
 	if req_dev:
 		# Attempt manual device selection
@@ -46,7 +76,7 @@ def device_check(req_dev):
 	return device
 
 
-def make_dataloaders():
+def make_dataloaders(batch_size=32):
 
     transforms = v2.Compose([
         #EnsureRGB(),
@@ -65,7 +95,11 @@ def make_dataloaders():
                                          transform=transforms)
     print(microglia_dataset.length)
 
+<<<<<<< HEAD
     data_train, data_val = generate_dataloaders(microglia_dataset, num_workers=1)
+=======
+    data_train, data_val = generate_dataloaders(microglia_dataset, num_workers=2, batch_size=batch_size)
+>>>>>>> bec4f805bab7f6907cccc3baa1b76572170008b9
     return data_train, data_val
 
 
@@ -95,12 +129,12 @@ def train(model, weights, epochs, data, device, loss_func, optimizer):
 
             train_outputs = model(images)
             loss = loss_func(train_outputs, labels)
-            train_loss_batch.append(loss.item()) # batch loss
+            train_loss_batch.append(loss.item())  # batch loss
             
             # Batch-level backpropagation
-            optimizer.zero_grad() # Zero gradients from previous epoch
-            loss.backward() # Calculate gradient
-            optimizer.step() # Update weights
+            optimizer.zero_grad()  # Zero gradients from previous epoch
+            loss.backward()  # Calculate gradient
+            optimizer.step()  # Update weights
 
             #if batch % 35 == 0 and batch != 0:
             # Compute validation accuracy
@@ -179,9 +213,54 @@ def train(model, weights, epochs, data, device, loss_func, optimizer):
 
 if __name__ == "__main__":
 
+    msg = "Microglia CNN training script"
+    parser = argparse.ArgumentParser(description=msg)
 
+    # Adding arguments
+    parser.add_argument("-d", "--dev", "--device", 
+					default=None, 
+					choices=["cpu", "cuda", "mps"],
+					type=str,
+					help="Device to use for training [cpu, gpu, mps], defaults to automatic detection.")
+    parser.add_argument("-e", "--epochs",
+					default=10, 
+					type=int, 
+					help="Number of epochs to train the model.")
+    parser.add_argument("--split",
+					default=0.8,
+					type=float,
+					help="Train-test split ratio, defaults to 0.8 (80%% train, 20%% validation).")
+    parser.add_argument("-b", "--batch_size",
+					default=64, 
+					type=int, 
+					help="Batch size for training.")
+    parser.add_argument("-l", "--learning_rate",
+					default=0.001, 
+					type=float, 
+					help="Learning rate for the optimizer.")
+    parser.add_argument("--decay",
+					default=0.0001, 
+					type=float, 
+					help="Weight decay for the optimizer.")
+    parser.add_argument("-w", "--weights",
+					default=None, 
+					type=str, 
+					help="Path to store or load the model weights file, if any.")
+    parser.add_argument('-v', '--verbose', action='store_true')
 
-    data_train, data_val = make_dataloaders()
+    args = parser.parse_args()
+
+	# Set up logging
+    logging.basicConfig(format="[+] %(message)s")
+    logger = logging.getLogger()
+    logger.setLevel(logging.NOTSET if args.verbose else logging.WARNING)
+
+    ### Figure out the device to use for training
+    device = device_check(args.dev)
+    logger.info(f"Using device: {device}")
+	
+
+    data_train, data_val = make_dataloaders(batch_size=args.batch_size)
     model = MicrogliaCNN()
 
     loss_func = torch.nn.CrossEntropyLoss()
@@ -190,9 +269,14 @@ if __name__ == "__main__":
     val_accuracy, val_loss, train_loss = train(
         model=model,
         weights=None,
+<<<<<<< HEAD
         epochs=20,
         device=torch.device("cuda"),
+=======
+        epochs=args.epochs,
+        device=device,
+>>>>>>> bec4f805bab7f6907cccc3baa1b76572170008b9
         data=[data_train, data_val],
         loss_func=loss_func,
         optimizer=optimizer
-    )
+        )
