@@ -56,7 +56,7 @@ def make_dataloaders():
         #v2.Normalize(mean=[0.5, 0.5, 0.5], std=[0.5, 0.5, 0.5]),  # ImageNet-style
 		])
     
-    images_path = Path("/gscratch/cheme/nlsschim/data/microglia_data/ml_images/split_tifs/more_split")
+    images_path = Path("/gscratch/cheme/nlsschim/data/microglia_data/ml_images/split_tifs/")
     # images = data_io.load_images_from_directory(images_path)
 
     microglia_dataset = MicrogliaDataset(images_path,
