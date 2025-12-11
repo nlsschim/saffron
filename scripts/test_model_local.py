@@ -234,7 +234,7 @@ if __name__ == "__main__":
     model = MicrogliaCNN()
 
     loss_func = torch.nn.CrossEntropyLoss()
-    optimizer = torch.optim.Adam(model.parameters())
+    optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.decay)
 
     val_accuracy, val_loss, train_loss = train(
         model=model,
