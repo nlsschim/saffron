@@ -68,12 +68,12 @@ def validate_im(image: np.ndarray, file_path: str, verbose = False) -> bool:
         return False
 
     # Check for reasonable image dimensions
-    min_size, max_size = 32, 10000  # Reasonable bounds for microglia images
-    if any(dim < min_size or dim > max_size for dim in image.shape[:2]):
-        logger.error(
-            f"Image dimensions out of reasonable range {image.shape}: {file_path}"
-            )
-        return False
+    # min_size, max_size = 32, 10000  # Reasonable bounds for microglia images
+    # if any(dim < min_size or dim > max_size for dim in image.shape[:2]):
+    #     logger.error(
+    #         f"Image dimensions out of reasonable range {image.shape}: {file_path}"
+    #         )
+    #     return False
 
     # Check for valid data types
     valid_dtypes = [np.uint8, np.uint16, np.float32, np.float64]
@@ -264,6 +264,59 @@ class ImageDataset:
 
     def get_batch(self, indices):
         return [self.images[i].data for i in indices]
+    
+    def extract_single_channel(self, channel: int = 0) -> 'ImageDataset':
+        """
+        Extract single channel from all images and return new dataset.
+        
+        Handles both (C, H, W) and (H, W, C) formats.
+        Already 2D images are kept as-is.
+        
+        Parameters
+        ----------
+        channel : int, default 0
+            Channel index to extract
+            
+        Returns
+        -------
+        ImageDataset
+            New dataset with single-channel images
+        """
+        new_images = []
+        
+        for img_data in self.images:
+            image = img_data.data
+            
+            # Handle 2D images (already single channel)
+            if image.ndim == 2:
+                extracted = image
+            
+            # Handle 3D images
+            elif image.ndim == 3:
+                # Channels first: (3, H, W) or (C, H, W)
+                if image.shape[0] in [1, 3, 4] and image.shape[0] < image.shape[1]:
+                    extracted = image[channel]
+                # Channels last: (H, W, 3) or (H, W, C)
+                elif image.shape[2] in [1, 3, 4] and image.shape[2] < image.shape[0]:
+                    extracted = image[:, :, channel]
+                else:
+                    raise ValueError(
+                        f"Cannot determine channel dimension for shape {image.shape}"
+                    )
+            else:
+                raise ValueError(f"Expected 2D or 3D image, got {image.ndim}D")
+            
+            # Create new ImageData with extracted channel
+            new_img_data = ImageData(
+                data=extracted,
+                file_path=img_data.file_path,
+                shape=extracted.shape,
+                dtype=str(extracted.dtype),
+                metadata=img_data.metadata
+            )
+            new_images.append(new_img_data)
+        
+        return ImageDataset(new_images)
 
 
 if __name__ == "__main__":
