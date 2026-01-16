@@ -15,7 +15,7 @@ from pathlib import Path
 import logging
 
 # Import from saffron modules
-from saffron.io.data_io import ImageData, load_images_from_directory
+from saffron.io.data_io import ImageData, load_images_from_directory, ImageDataset
 from saffron.data.data_processing import (
     train_test_split,
     create_positive_pairs,
@@ -235,6 +235,7 @@ class PatchPairDataset(Dataset):
 
 def create_contrastive_datasets(
     image_directory: str,
+    channel=1,
     patch_size: int = 64,
     patches_per_image: int = 5,
     negatives_per_positive: int = 3,
@@ -278,8 +279,13 @@ def create_contrastive_datasets(
         image_directory,
         file_extensions=['.tif', '.tiff', '.npy']
     )
+
+    images_dataset = ImageDataset(images)
+    images_dataset.extract_single_channel(channel=channel)
+    images_dataset.apply_max_projection()
     
     logger.info(f"Loaded {len(images)} images")
+    logger.info(f"image shape: {images_dataset.get_shapes()[0]}")
     
     if len(images) == 0:
         raise ValueError(f"No images found in {image_directory}")
@@ -290,7 +296,7 @@ def create_contrastive_datasets(
     logger.info(f"\nStep 2: Splitting data using '{split_criteria}' strategy")
     
     data_splits = train_test_split(
-        images,
+        images_dataset.images,
         test_size=test_size,
         val_size=val_size,
         split_criteria=split_criteria,
@@ -348,6 +354,7 @@ def create_contrastive_datasets(
 
 def create_contrastive_dataloaders(
     image_directory: str,
+    channel=1,
     batch_size: int = 16,
     patch_size: int = 64,
     patches_per_image: int = 5,
@@ -381,6 +388,7 @@ def create_contrastive_dataloaders(
     # Create datasets
     train_dataset, val_dataset, test_dataset = create_contrastive_datasets(
         image_directory=image_directory,
+        channel=channel,
         patch_size=patch_size,
         patches_per_image=patches_per_image,
         negatives_per_positive=negatives_per_positive,
@@ -389,7 +397,7 @@ def create_contrastive_dataloaders(
         val_size=val_size,
         random_state=random_state
     )
-    
+
     # Create dataloaders
     train_loader = DataLoader(
         train_dataset,
@@ -399,7 +407,7 @@ def create_contrastive_dataloaders(
         pin_memory=True,
         drop_last=True  # Drop last incomplete batch for consistent batch sizes
     )
-    
+
     val_loader = DataLoader(
         val_dataset,
         batch_size=batch_size,
@@ -415,7 +423,7 @@ def create_contrastive_dataloaders(
         num_workers=num_workers,
         pin_memory=True
     )
-    
+
     logger.info(f"\nDataLoaders created:")
     logger.info(f"  Train: {len(train_loader)} batches")
     logger.info(f"  Val: {len(val_loader)} batches")

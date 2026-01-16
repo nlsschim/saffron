@@ -246,6 +246,7 @@ def load_images_from_directory(directory: Union[str, Path],
                 continue
 
     logger.info(f"Successfully loaded {len(loaded_images)} images from {directory}")
+
     return loaded_images
 
 
@@ -303,6 +304,14 @@ class ImageDataset:
                     raise ValueError(
                         f"Cannot determine channel dimension for shape {image.shape}"
                     )
+                
+            elif image.ndim == 4:
+
+                if image.shape[0] in [1, 3, 4] and image.shape[0] < image.shape[1]:
+                    extracted = image[channel]
+
+                elif image.shape[3] in [1, 3, 4] and image.shape[3] < image.shape[0]:
+                    extracted = image[:, :, :, channel]
             else:
                 raise ValueError(f"Expected 2D or 3D image, got {image.ndim}D")
             
@@ -315,8 +324,41 @@ class ImageDataset:
                 metadata=img_data.metadata
             )
             new_images.append(new_img_data)
+
+        self.images = new_images
+        return self
+
+    def apply_max_projection(self):
+        """
+        Converts multi-slice 3D images to 2D by taking maximum intensity projection.
+        Modifies the dataset in-place.
+        """
+        projected_images = []
+
+        for img_data in self.images:
+
+            img = img_data.data
+            # img shape: (C, Z, H, W) or (Z, H, W)
+            if len(img.shape) == 4:  # Multi-channel case (C, Z, H, W)
+                projected = np.max(img, axis=1)  # Result: (C, H, W)
+            elif len(img.shape) == 3:  # Single channel case (Z, H, W)
+                projected = np.max(img, axis=0)  # Result: (H, W)
+            else:
+                # Already 2D, keep as is
+                projected = img
+
+            new_img_data = ImageData(
+                data=projected,
+                file_path=img_data.file_path,
+                shape=projected.shape,
+                dtype=str(projected.dtype),
+                metadata=img_data.metadata
+            )
+
+            projected_images.append(new_img_data)
         
-        return ImageDataset(new_images)
+        self.images = projected_images
+        return self
 
 
 if __name__ == "__main__":
