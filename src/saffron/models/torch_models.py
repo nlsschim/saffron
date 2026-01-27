@@ -278,7 +278,7 @@ class ContrastiveModel(nn.Module):
     Handles both masked image and patch encoding for contrastive learning.
     """
     
-    def __init__(self, 
+    def __init__(self,
                  backbone_type: str = "resnet18",
                  input_channels: int = 1,
                  pretrained: bool = True,
@@ -383,7 +383,7 @@ class ContrastiveModel(nn.Module):
         logger.info("Backbone parameters unfrozen")
 
 
-def create_model(backbone_type: str = "resnet18", **kwargs) -> ContrastiveModel:
+def create_contrastive_model(backbone_type: str = "resnet18", **kwargs) -> ContrastiveModel:
     """
     Convenience function to create a ContrastiveModel with specified backbone.
     
@@ -410,7 +410,7 @@ if __name__ == "__main__":
     
     for backbone in available_backbones:
         try:
-            model = create_model(backbone_type=backbone, input_channels=1)
+            model = create_contrastive_model(backbone_type=backbone, input_channels=1)
             print(f"\n{backbone} model created successfully!")
             print(f"Parameters: {model.get_num_parameters()}")
 
