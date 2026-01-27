@@ -1,7 +1,7 @@
 import numpy as np
 import tifffile
 from pathlib import Path
-from typing import Union, Tuple, Optional
+from typing import Union, Tuple, Optional, Literal
 import logging
 from dataclasses import dataclass
 
@@ -144,6 +144,7 @@ def load_tif(file_path: Union[str, Path]) -> ImageData:
         try:
             with tifffile.TiffFile(str(file_path)) as tif:
                 if tif.pages[0].tags:
+                    
                     metadata = {tag.name: tag.value for tag in tif.pages[0].tags.values()}
         except Exception as e:
             logger.warning(f"Could not extract metadata from {file_path}: {e}")
@@ -265,114 +266,3 @@ class ImageDataset:
 
     def get_batch(self, indices):
         return [self.images[i].data for i in indices]
-    
-    def extract_single_channel(self, channel: int = 0) -> 'ImageDataset':
-        """
-        Extract single channel from all images and return new dataset.
-        
-        Handles both (C, H, W) and (H, W, C) formats.
-        Already 2D images are kept as-is.
-        
-        Parameters
-        ----------
-        channel : int, default 0
-            Channel index to extract
-            
-        Returns
-        -------
-        ImageDataset
-            New dataset with single-channel images
-        """
-        new_images = []
-        
-        for img_data in self.images:
-            image = img_data.data
-            
-            # Handle 2D images (already single channel)
-            if image.ndim == 2:
-                extracted = image
-            
-            # Handle 3D images
-            elif image.ndim == 3:
-                # Channels first: (3, H, W) or (C, H, W)
-                if image.shape[0] in [1, 3, 4] and image.shape[0] < image.shape[1]:
-                    extracted = image[channel]
-                # Channels last: (H, W, 3) or (H, W, C)
-                elif image.shape[2] in [1, 3, 4] and image.shape[2] < image.shape[0]:
-                    extracted = image[:, :, channel]
-                else:
-                    raise ValueError(
-                        f"Cannot determine channel dimension for shape {image.shape}"
-                    )
-                
-            elif image.ndim == 4:
-
-                if image.shape[0] in [1, 3, 4] and image.shape[0] < image.shape[1]:
-                    extracted = image[channel]
-
-                elif image.shape[3] in [1, 3, 4] and image.shape[3] < image.shape[0]:
-                    extracted = image[:, :, :, channel]
-            else:
-                raise ValueError(f"Expected 2D or 3D image, got {image.ndim}D")
-            
-            # Create new ImageData with extracted channel
-            new_img_data = ImageData(
-                data=extracted,
-                file_path=img_data.file_path,
-                shape=extracted.shape,
-                dtype=str(extracted.dtype),
-                metadata=img_data.metadata
-            )
-            new_images.append(new_img_data)
-
-        self.images = new_images
-        return self
-
-    def apply_max_projection(self):
-        """
-        Converts multi-slice 3D images to 2D by taking maximum intensity projection.
-        Modifies the dataset in-place.
-        """
-        projected_images = []
-
-        for img_data in self.images:
-
-            img = img_data.data
-            # img shape: (C, Z, H, W) or (Z, H, W)
-            if len(img.shape) == 4:  # Multi-channel case (C, Z, H, W)
-                projected = np.max(img, axis=1)  # Result: (C, H, W)
-            elif len(img.shape) == 3:  # Single channel case (Z, H, W)
-                projected = np.max(img, axis=0)  # Result: (H, W)
-            else:
-                # Already 2D, keep as is
-                projected = img
-
-            new_img_data = ImageData(
-                data=projected,
-                file_path=img_data.file_path,
-                shape=projected.shape,
-                dtype=str(projected.dtype),
-                metadata=img_data.metadata
-            )
-
-            projected_images.append(new_img_data)
-        
-        self.images = projected_images
-        return self
-
-
-if __name__ == "__main__":
-    # Example usage
-    try:
-        # Load a single TIF file
-        # img_data = load_tif("path/to/your/image.tif")
-        # print(f"Loaded image: {img_data.shape}")
-
-        # Load all images from a directory
-        # images = load_images_from_directory("path/to/your/directory")
-        # print(f"Loaded {len(images)} images")
-
-        print("Data IO module loaded successfully!")
-
-    except Exception as e:
-        print(f"Error in example usage: {e}")
