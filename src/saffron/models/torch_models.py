@@ -57,11 +57,12 @@ class MicrogliaCNN(torch.nn.Module):
         return out
 
 
-class BackboneEncoder(ABC):
+class BackboneEncoder(ABC, nn.Module):
     """Abstract base class for different backbone encoders."""
     
     @abstractmethod
     def __init__(self, input_channels: int = 1, pretrained: bool = True):
+        super().__init__()
         pass
     
     @abstractmethod
@@ -73,11 +74,12 @@ class BackboneEncoder(ABC):
         pass
 
 
-class ResNetEncoder(BackboneEncoder):
+class ResNetEncoder(BackboneEncoder, nn.Module):
     """ResNet backbone encoder."""
     
     def __init__(self, input_channels: int = 1, pretrained: bool = True, 
                  resnet_type: str = "resnet18"):
+        super().__init__()
         self.resnet_type = resnet_type
         
         # Load pretrained ResNet
@@ -110,148 +112,6 @@ class ResNetEncoder(BackboneEncoder):
         return self.output_dim
 
 
-class EfficientNetEncoder(BackboneEncoder):
-    """EfficientNet backbone encoder."""
-    
-    def __init__(self, input_channels: int = 1, pretrained: bool = True,
-                 efficientnet_type: str = "efficientnet_b0"):
-        try:
-            from torchvision.models import efficientnet_b0, efficientnet_b1, efficientnet_b2
-        except ImportError:
-            raise ImportError("EfficientNet requires torchvision >= 0.11.0")
-        
-        self.efficientnet_type = efficientnet_type
-        
-        # Load pretrained EfficientNet
-        if efficientnet_type == "efficientnet_b0":
-            self.backbone = efficientnet_b0(pretrained=pretrained)
-            self.output_dim = 1280
-        elif efficientnet_type == "efficientnet_b1":
-            self.backbone = efficientnet_b1(pretrained=pretrained)
-            self.output_dim = 1280
-        elif efficientnet_type == "efficientnet_b2":
-            self.backbone = efficientnet_b2(pretrained=pretrained)
-            self.output_dim = 1408
-        else:
-            raise ValueError(f"Unsupported EfficientNet type: {efficientnet_type}")
-        
-        # Modify first conv layer for single channel input if needed
-        if input_channels != 3:
-            original_conv = self.backbone.features[0][0]
-            self.backbone.features[0][0] = nn.Conv2d(
-                input_channels, original_conv.out_channels,
-                kernel_size=original_conv.kernel_size,
-                stride=original_conv.stride,
-                padding=original_conv.padding,
-                bias=False
-            )
-        
-        # Remove the final classification layer
-        self.backbone.classifier = nn.Identity()
-        
-    def forward(self, x: Tensor) -> Tensor:
-        return self.backbone(x)
-    
-    def get_output_dim(self) -> int:
-        return self.output_dim
-
-
-class ViTEncoder(BackboneEncoder):
-    """Vision Transformer backbone encoder."""
-    
-    def __init__(self, input_channels: int = 1, pretrained: bool = True,
-                 vit_type: str = "vit_b_16"):
-        try:
-            from torchvision.models import vit_b_16, vit_b_32, vit_l_16
-        except ImportError:
-            raise ImportError("Vision Transformer requires torchvision >= 0.13.0")
-        
-        self.vit_type = vit_type
-        
-        # Load pretrained ViT
-        if vit_type == "vit_b_16":
-            self.backbone = vit_b_16(pretrained=pretrained)
-            self.output_dim = 768
-        elif vit_type == "vit_b_32":
-            self.backbone = vit_b_32(pretrained=pretrained)
-            self.output_dim = 768
-        elif vit_type == "vit_l_16":
-            self.backbone = vit_l_16(pretrained=pretrained)
-            self.output_dim = 1024
-        else:
-            raise ValueError(f"Unsupported ViT type: {vit_type}")
-        
-        # Modify patch embedding for single channel input if needed
-        if input_channels != 3:
-            original_conv = self.backbone.conv_proj
-            self.backbone.conv_proj = nn.Conv2d(
-                input_channels, original_conv.out_channels,
-                kernel_size=original_conv.kernel_size,
-                stride=original_conv.stride,
-                padding=original_conv.padding
-            )
-        
-        # Remove the final classification head
-        self.backbone.heads = nn.Identity()
-        
-    def forward(self, x: Tensor) -> Tensor:
-        return self.backbone(x)
-    
-    def get_output_dim(self) -> int:
-        return self.output_dim
-
-
-class SimpleConvEncoder(BackboneEncoder):
-    """Simple convolutional encoder for testing/baseline."""
-    
-    def __init__(self, input_channels: int = 1, pretrained: bool = True):
-        # pretrained parameter ignored for custom architecture
-        self.backbone = nn.Sequential(
-            # Block 1
-            nn.Conv2d(input_channels, 32, 3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(32, 32, 3, padding=1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-            
-            # Block 2
-            nn.Conv2d(32, 64, 3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(64, 64, 3, padding=1),
-            nn.BatchNorm2d(64),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-            
-            # Block 3
-            nn.Conv2d(64, 128, 3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(128, 128, 3, padding=1),
-            nn.BatchNorm2d(128),
-            nn.ReLU(inplace=True),
-            nn.MaxPool2d(2),
-            
-            # Block 4
-            nn.Conv2d(128, 256, 3, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(inplace=True),
-            nn.Conv2d(256, 256, 3, padding=1),
-            nn.BatchNorm2d(256),
-            nn.ReLU(inplace=True),
-            nn.AdaptiveAvgPool2d((1, 1)),
-            nn.Flatten()
-        )
-        self.output_dim = 256
-    
-    def forward(self, x: Tensor) -> Tensor:
-        return self.backbone(x)
-    
-    def get_output_dim(self) -> int:
-        return self.output_dim
-
 
 class ProjectionHead(nn.Module):
     """Projection head for contrastive learning."""
@@ -262,15 +122,16 @@ class ProjectionHead(nn.Module):
             nn.Linear(input_dim, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
             nn.ReLU(inplace=True),
+            #nn.Dropout(0.01),  # Add dropout
             nn.Linear(hidden_dim, hidden_dim),
             nn.BatchNorm1d(hidden_dim),
             nn.ReLU(inplace=True),
+            #nn.Dropout(0.01),  # Add dropout
             nn.Linear(hidden_dim, output_dim)
         )
     
     def forward(self, x: Tensor) -> Tensor:
         return self.projection(x)
-
 
 class ContrastiveModel(nn.Module):
     """
